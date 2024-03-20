@@ -45,14 +45,14 @@ def aggregate_semantic_data():
             for dsd_type in ["ks", "typicality", "grad_magnitude", "odin", "cross_entropy"]:
                 for k in ["", "_5NN"]:
                     dsd = f"{dsd_type}{k}"
-                    fname = f"new_data/Semantic_{dataset}_{dsd}_{sample_size}.csv"
+                    fname = f"data/Semantic_{dataset}_{dsd}_{sample_size}.csv"
                     data = open_and_process_semantic(fname, filter_noise=True)
                     if data is None:
                         continue
-                    data_cov = open_and_process(f"new_data/{dataset}_normal_{dsd}_{sample_size}.csv",
+                    data_cov = open_and_process(f"data/{dataset}_normal_{dsd}_{sample_size}.csv",
                                                 filter_noise=True)
                     # print(data_cov)
-                    # input(f"new_data/{dataset}_normal_{dsd}_{sample_size}.csv")
+                    # input(f"data/{dataset}_normal_{dsd}_{sample_size}.csv")
                     if data_cov is not None:
                         data.loc[data['fold'] == 'ind', 'pvalue'] = data_cov.loc[
                             data_cov['fold'] == 'ind', 'pvalue']
@@ -72,7 +72,7 @@ def aggregate_covariate_data(mode="normal"):
             for dsd_type in ["ks", "typicality_ks_glow", "grad_magnitude", "odin", "cross_entropy"]:
                 for k in ["", "_5NN"]:
                     dsd = f"{dsd_type}{k}"
-                    fname = f"new_data/{dataset}_{mode}_{dsd}_{sample_size}.csv"
+                    fname = f"data/{dataset}_{mode}_{dsd}_{sample_size}.csv"
                     data = open_and_process(fname, filter_noise=False)
                     if data is None:
                         continue
@@ -182,7 +182,7 @@ def get_kl():
     for dataset in ["CIFAR10_normal", "CIFAR100_normal", "NICO_noise", "Njord_noise", "Polyp_noise", "imagenette_normal"]:
         for dsd in ["ks", "ks_5NN", "typicality"]:
             for sample_size in [100]:
-                fname = f"new_data/{dataset}_{dsd}_{sample_size}.csv"
+                fname = f"data/{dataset}_{dsd}_{sample_size}.csv"
                 data = open_and_process(fname)
                 if data is None:
                     continue
@@ -329,7 +329,7 @@ def plot_regplots_organic_shifts():
     for dataset in ["NICO_normal", "NICO_noise"]:
         for dsd in ["ks", "ks_5NN", "typicality"]:
             for sample_size in [100]:
-                fname = f"new_data/{dataset}_{dsd}_{sample_size}.csv"
+                fname = f"data/{dataset}_{dsd}_{sample_size}.csv"
                 data = open_and_process(fname)
                 if data is None:
                     continue
@@ -378,28 +378,28 @@ def plot_variances():
     merged.replace(["RandomSampler", "ClassOrderSampler", "SequentialSampler", "ClusterSampler"],
                              ["None", "Class", "Temporal", "Synthetic"], inplace=True)
     palette = sns.color_palette("muted", n_colors=10)
-    colors = dict(zip(["None", "Class", "Temporal", "Synthetic"], [palette[7], palette[0], palette[2], palette[8]]))
-    print(merged.head(20))
-    merged = merged[merged["Dataset"]=="CIFAR10"]
-    print("dataset")
-    print(merged.head(20))
-    print("sample size")
-    merged = merged[merged["Sample Size"]==100]
-    print(merged.head(20))
+    colors = dict(zip(["None", "Class", "Synthetic"], [palette[0], palette[1], palette[2]]))
 
+    merged = merged[merged["Dataset"]=="CIFAR10"]
+    merged = merged[merged["Sample Size"]==100]
     merged = merged[merged["Base"]=="ks"]
     merged = merged[merged["fold"]=="ind"]
+
     merged["pvalue"] = merged["pvalue"].apply(lambda x: math.log(x, 10) if x!=0 else -255)
-    print(merged.columns)
-    print(merged.head(20))
-    g = sns.FacetGrid(data=merged, row="Type", sharey=False, sharex=False, margin_titles=True, height=2.5, aspect=2)
-    g.map_dataframe(sns.kdeplot, x="pvalue", hue="sampler", palette="mako")
-    merged.rename(columns={"sampler":"Bias"}, inplace=True)
-    print(merged[merged['fold'] == 'ind'])
-    # g.set(xscale="log")
-    plt.legend()
+    # merged.rename(columns={"Sampler":"Bias"}, inplace=True)
+    merged.rename(columns={"pvalue":"Log p-value"}, inplace=True)
+
+    g = sns.FacetGrid(data=merged, row="Type", hue="sampler", sharey=False, sharex=False, margin_titles=True, height=2.5, aspect=2, palette=colors)
+    g.map_dataframe(sns.kdeplot, x="Log p-value", palette=colors, common_norm=False)
+
+    # After plotting, explicitly add a legend. This step may need adjustments based on your specific needs.
+    # Generate the legend manually
+    handles = [plt.Line2D([], [], color=colors[label], label=label) for label in colors]
+    plt.legend(handles=handles, title='Bias')
+
     plt.savefig("figures/kn_kdes.png")
     plt.show()
+    print("plotted")
 
 def illustrate_clustersampler():
     fig, ax = plt.subplots(5,1, sharex=False, sharey=Fa)
@@ -483,9 +483,9 @@ def breakdown_by_sampler(placeholder=False, metric="DR"):
         print(df)
 
 def plot_severity(dataset,sample_size):
-    df_knn = open_and_process(f"new_data/{dataset}_severity_ks_5NN_{sample_size}.csv", filter_noise=False)
-    df_rab = open_and_process(f"new_data/{dataset}_severity_ks_{sample_size}.csv", filter_noise=False)
-    df_typ = open_and_process(f"new_data/{dataset}_severity_typicality_{sample_size}.csv", filter_noise=False)
+    df_knn = open_and_process(f"data/{dataset}_severity_ks_5NN_{sample_size}.csv", filter_noise=False)
+    df_rab = open_and_process(f"data/{dataset}_severity_ks_{sample_size}.csv", filter_noise=False)
+    df_typ = open_and_process(f"data/{dataset}_severity_typicality_{sample_size}.csv", filter_noise=False)
 
     df_rab["OOD Detector"] = "Rabanser et Al."
     df_knn["OOD Detector"] = "KNNDSD"
@@ -541,7 +541,7 @@ def get_correlation_metrics_for_all_experiments(placeholder=False):
     for dataset in ["CIFAR100_normal", "CIFAR100_normal", "NICO_noise", "Njord_noise", "Polyp_noise", "imagenette_noise"]:
         for dsd in ["ks", "ks_5NN", "typicality"]:
             for sample_size in [10, 20, 50, 100, 200, 500]:
-                fname = f"new_data/{dataset}_{dsd}_{sample_size}.csv"
+                fname = f"data/{dataset}_{dsd}_{sample_size}.csv"
 
                 data = open_and_process(fname)
                 if data is None:
@@ -568,13 +568,13 @@ def get_semantic_metrics_for_all_experiments(placeholder=False):
             for dsd_type in ["ks", "typicality_ks_glow", "grad_magnitude", "odin", "cross_entropy", "jacobian"]:
                 for k in ["", "_5NN"]:
                     dsd = f"{dsd_type}{k}"
-                    fname = f"new_data/Semantic_{dataset}_{dsd}_{sample_size}.csv"
+                    fname = f"data/Semantic_{dataset}_{dsd}_{sample_size}.csv"
                     data = open_and_process_semantic(fname, filter_noise=True)
                     if data is None:
                         continue
-                    data_cov = open_and_process(f"new_data/{dataset}_normal_{dsd}_{sample_size}.csv", filter_noise=True)
+                    data_cov = open_and_process(f"data/{dataset}_normal_{dsd}_{sample_size}.csv", filter_noise=True)
                     # print(data_cov)
-                    # input(f"new_data/{dataset}_normal_{dsd}_{sample_size}.csv")
+                    # input(f"data/{dataset}_normal_{dsd}_{sample_size}.csv")
                     if data_cov is not None:
                         data.loc[data['fold'] == 'ind', 'pvalue'] = data_cov.loc[data_cov['fold'] == 'ind', 'pvalue']
 
@@ -606,7 +606,7 @@ def get_classification_metrics_for_all_experiments(placeholder=False, filter_noi
             for dsd_type in ["ks", "grad_magnitude", "odin", "cross_entropy", "typicality_ks_glow"]:
                 for k in ["", "_5NN"]:
                     dsd = f"{dsd_type}{k}"
-                    fname = f"new_data/{dataset}_{dsd}_{sample_size}.csv"
+                    fname = f"data/{dataset}_{dsd}_{sample_size}.csv"
                     data = open_and_process(fname, filter_noise=filter_noise)
                     if data is None:
                         if placeholder:
@@ -767,8 +767,8 @@ def plot_severities():
 def compare_organic_and_synthetic_shifts(dataset):
     for detector in ["ks_5NN", "ks"]:
         for sample_size in [100]:
-            noise_data = open_and_process(f"new_data/{dataset}_noise_{detector}_{sample_size}.csv")
-            organic_data = open_and_process(f"new_data/{dataset}_normal_{detector}_{sample_size}.csv")
+            noise_data = open_and_process(f"data/{dataset}_noise_{detector}_{sample_size}.csv")
+            organic_data = open_and_process(f"data/{dataset}_normal_{detector}_{sample_size}.csv")
             noise_data["type"]="noise"
             organic_data["type"]="organic"
             merged = pd.concat((noise_data, organic_data))
@@ -893,71 +893,11 @@ if __name__ == '__main__':
     """
     # Classification
     """
-    # df = get_classification_metrics_for_all_grad_experiments()
-    # df = df[df["Sampler"]=="ClassOrderSampler"]
-    # df = df.groupby(["Sample Size", "Dataset", "OOD Detector"])[["DR"]].mean()
-    # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-    #     print(df)
-    # def sliding_window_mean(data):
-    #     return data.rolling(window=10).mean()
-    # # plot_pvaluedist()
-    # # input()
+
     from features import *
     from testbeds import *
-    # import time
-    # # testbed = NicoTestBed(100, "classifier", mode="normal")
-    # testbed= CIFAR10TestBed(100, "classifier", mode="normal")
-    # ind_norms = []
-    # ood_norms = []
-    # criterion = nn.CrossEntropyLoss()
-    # sub_classifier = testbed.classifier
-    # for i, (x, y) in tqdm(enumerate(DataLoader(testbed.ind_val)), total=len(testbed.ind_val)):
-    #     x = x.cuda()
-    #     y = y.cuda()
-    #     with torch.no_grad():
-    #         loss = criterion(testbed.classifier(x), y)
-    #     # jacob = jacobian(testbed.classifier, x)
-    #
-    #     eig = jjtsvd(testbed.classifier, x)
-    #     ind_norms.append({"fold":"ind", "eig":eig, "loss":loss})
-    #
-    # for i, (x,y) in tqdm(enumerate(DataLoader(testbed.oods[-1])), total=len(testbed.oods[-1])):
-    #     x = x.cuda()
-    #     y = y.cuda()
-    #
-    #     with torch.no_grad():
-    #         loss = criterion(testbed.classifier(x), y)
-    #     ood_norms.append({"fold":"ood", "eig":jjtsvd(testbed.classifier, x), "loss":loss})
-    # #
-    # df = pd.DataFrame(ind_norms+ood_norms)
-    # sns.kdeplot(data=df, x="eig", hue="fold")
-    # plt.title(f"Jacobian Norms, ks={ks_2samp(df[df['fold']=='ind']['eig'], df[df['fold']=='ood']['eig'])[1]}")
-    # plt.savefig("figures/jacobian_norms_subclassifier.png")
-    # plt.show()
-    # plt.close()
-    #
-    # sns.kdeplot(data=df, x="gnorm", hue="fold")
-    # plt.title(f"Gradient Norms, ks={ks_2samp(df[df['fold']=='ind']['gnorm'], df[df['fold']=='ood']['gnorm'])[1]}")
-    # plt.savefig("figures/gradient_norms_subclassifier.png")
-    # plt.show()
-    # plt.close()
-
-    # print("Jacobian")
-    # collect_losswise_metrics("jacobian_test_cifar10.csv")
-    # # collect_losswise_metrics("jacobian_test_Nico_noise.csv")
-    # print("Condition")
-    # collect_losswise_metrics("condition_number_test_cifar10.csv")
-    # print("Grad Magnitude")
-    # collect_losswise_metrics("grad_magnitude_test_cifar10.csv")
-    # print("Rabanser")
-    # collect_losswise_metrics("new_data/CIFAR10_normal_ks_100.csv")
-
-    # illustrate_bias_types()
-    # compare_organic_and_synthetic_shifts("NICO")
-    # plot_lossvp_for_fold()
-    # collect_losswise_metrics("data/imagenette_ks_5NN_100_fullloss.csv")
-    # boxplot_test()
-    # compare_testbed_encs()
+    plot_variances()
+    input()
     # summarize_results(placeholder=False)
     # input()
     # data_df = aggregate_semantic_data()
@@ -984,12 +924,6 @@ if __name__ == '__main__':
     with pd.option_context('display.max_rows', None, 'display.max_columns', None):
         print(df)
 
-    # df = df.groupby(["Dataset", "OOD Detector"])[["FPR", "FNR", "DR", "AUROC", "AUPR"]].mean()
-    # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-    #     print(df)
-    # plot_semantic_kdes()
-    # plot_semantic_kdes()
-
 
     # df = df.groupby(["Dataset", "OOD Detector"])[["FPR", "FNR", "DR"]].mean()
     # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
@@ -1015,14 +949,3 @@ if __name__ == '__main__':
     """
     # correlation_summary()
     # plot_regplots()
-    # plot_variances()
-    # plot_regplots_organic_shifts()
-    # get_kl()
-    # df1 = pd.read_csv("new_ind_njord.csv")
-    # df1["fold"]="ind"
-    # df2 = pd.read_csv("new_ood_njord.csv")
-    # df2["fold"]="ood"
-    # df = pd.concat([df1, df2])
-    # sns.kdeplot(df, x="loss", hue="fold")
-    # plt.show()
-    # plot_severity("imagenette", 100)
