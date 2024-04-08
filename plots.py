@@ -355,14 +355,14 @@ def plot_regplots():
     merged = merged[merged["Sample Size"]==100]
     merged = merged[merged["Base"]=="ks"]
     # print(merged[(merged['fold'] == 'ind')]['pvalue'])
+    merged.rename(columns={"sampler":"Bias"}, inplace=True)
 
-    min_value = merged[(merged['fold'] == 'ind') & (merged['sampler'] == 'None')]['pvalue'].min()
-
-    g = sns.FacetGrid(data=merged, col="KNNDSD", row="sampler", sharey=False, sharex=False, margin_titles=True, height=2.5, aspect=2)
+    min_value = merged[(merged['fold'] == 'ind') & (merged['Bias'] == 'None')]['pvalue'].min()
+    # print(merged.columns)
+    g = sns.FacetGrid(data=merged, col="Type", row="Bias", sharey=False, sharex=False, margin_titles=True, height=2.5, aspect=2)
     g.map_dataframe(sns.scatterplot, y="pvalue", x="loss", hue="fold", palette="mako")
     # g.map_dataframe(sns.kdeplot, x="pvalue", hue="fold", palette="mako")
-    merged.rename(columns={"sampler":"Bias"}, inplace=True)
-    print(merged[merged['fold'] == 'ind'])
+    # print(merged[merged['fold'] == 'ind'])
     print(min_value)
     def draw_min_line(*args, **kwargs):
         plt.axhline(y=min_value, color='red', linestyle='--', lw=2)
@@ -370,7 +370,7 @@ def plot_regplots():
     g.map(draw_min_line)
     g.set(yscale="log").set(ylim=0)
 
-    plt.savefig("figures/regplots.png")
+    plt.savefig("figures/regplots.eps")
     plt.show()
 
 def plot_variances():
@@ -397,7 +397,7 @@ def plot_variances():
     handles = [plt.Line2D([], [], color=colors[label], label=label) for label in colors]
     plt.legend(handles=handles, title='Bias')
 
-    plt.savefig("figures/kn_kdes.png")
+    plt.savefig("figures/knn_kdes.eps")
     plt.show()
     print("plotted")
 
@@ -463,17 +463,19 @@ def plot_bias_severity_impact(filename):
 
 def breakdown_by_sample_size(placeholder=False, metric="DR"):
     df = get_classification_metrics_for_all_experiments(placeholder=placeholder)
-    # print(df.groupby(["Dataset", "Sample Size"])["DR"].mean())
-    # input()
     df["Type"] = df["OOD Detector"].apply(lambda x: "kNNDSD" if "5NN" in x else "Vanilla")
     df["Base"] = df["OOD Detector"].apply(lambda x: x.split("_5NN")[0] if "5NN" in x else x)
-    df["Dataset"]=df["Dataset"].apply(lambda x: x.split("_")[0].capitalize())
-    # df = df[df["Sampler"]=="RandomSampler"]
-    g = sns.FacetGrid(data=df, col="Dataset", row="Base", sharey=True, sharex=False)
-    g.map_dataframe(sns.lineplot, x="Sample Size", y="DR", hue="Type")
-    # g.map_dataframe(sns.lineplot, x="Sample Size", y="DR", hue="KNNDSD")
+    df["Dataset"] = df["Dataset"].apply(lambda x: x.split("_")[0].capitalize())
+    df.replace(["typicality_ks_glow", "grad_magnitude", "cross_entropy", "ks", "odin"], ["Typicality", "GradNorm", "CrossEntropy", "KS", "ODIN"], inplace=True)
+    g = sns.FacetGrid(data=df, col="Dataset", row="Base", sharey=True, sharex=False, margin_titles=True)
+    g.map_dataframe(sns.lineplot, x="Sample Size", y=metric, hue="Type")
+
+    # Adjust the legend
     g.add_legend()
-    plt.savefig("test_plots/samplesizebreakdown.png")
+    # g.add_legend(bbox_to_anchor=(0.5, -0.1), loc='upper center', ncol=2)
+    # plt.subplots_adjust(bottom=0.5)  # Increase bottom margin
+    # plt.tight_layout(pad=10.0)  # Adjust the layout to make room for the legend
+    plt.savefig("figures/samplesizebreakdown.png")
     plt.show()
 
 def breakdown_by_sampler(placeholder=False, metric="DR"):
@@ -749,7 +751,7 @@ def plot_lossvp_for_fold():
     g.add_legend(bbox_to_anchor=(1.05, 0.6), loc='upper left')
     plt.legend(bbox_to_anchor=(1.05, 0.6), loc='upper left')
     g.tight_layout()
-    plt.savefig("test_plots/lossvp_fold.png")
+    plt.savefig("figures/lossvp_fold.png")
     plt.show()
 
 def plot_severities():
@@ -813,7 +815,7 @@ def illustrate_bias_types():
         ax[i].set(xticks=[])
     ax[1].legend(title="Bias Type", bbox_to_anchor=(0.5, -0.2), loc='upper center', fancybox=True, ncol=3)
     plt.tight_layout()
-    plt.savefig("test_plots/biased_encodings.png")
+    plt.savefig("figures/biased_encodings.png")
     plt.show()
 
 
@@ -856,7 +858,7 @@ def compare_testbed_encs():
     # # sns.scatterplot(x=trans[len(val_encodings):,0],y=trans[len(val_encodings):,1], alpha=0.9, label="EMNIST")
     # plt.legend()
     # plt.show()
-    plt.savefig("test_plots/mnist_classes.png")
+    plt.savefig("figures/mnist_classes.png")
     print("all done")
 def plot_pvaluedist():
     df = open_and_process("data/CIFAR10_ks_100_fullloss.csv", combine_losses=False)
@@ -870,7 +872,7 @@ def boxplot_test():
     data["Type"] = data["OOD Detector"].apply(lambda x: "5NN" in x)
 
     sns.boxplot(data=data, x="Sampler", y="DR", hue="KNNDSD")
-    plt.savefig("test_plots/boxplot_test.png")
+    plt.savefig("figures/boxplot_test.png")
     plt.show()
     plt.close()
 
@@ -884,7 +886,7 @@ def plot_semantic_kdes():
     g = sns.FacetGrid(data=df, col="OOD Detector", sharey=False, sharex=False, margin_titles=True)
     g.map_dataframe(sns.histplot, x="pvalue", hue="fold", palette="mako", bins=50).set(xscale="log", yscale="log")
     g.add_legend()
-    plt.savefig("test_plots/semantic_kde.png")
+    plt.savefig("figures/semantic_kde.png")
     plt.show()
 
 
@@ -896,56 +898,17 @@ if __name__ == '__main__':
 
     from features import *
     from testbeds import *
-    plot_variances()
-    input()
+    # plot_variances()
     # summarize_results(placeholder=False)
-    # input()
-    # data_df = aggregate_semantic_data()
-    # data_df = data_df[data_df["Sample Size"]==100]
-    # # data_df = data_df[data_df["Dataset"]=="CIFAR10"]
-    # data_df["Type"] = data_df["OOD Detector"].apply(lambda x: "5NN" in x)
-    # data_df["Base"] = data_df["OOD Detector"].apply(lambda x: x.split("_5NN")[0] if "5NN" in x else x)
-    # data_df["pvalue"] = data_df["pvalue"].apply(lambda x: np.log10(x))
-    # print(data_df.groupby(["Base", "Type"])["pvalue"].mean())
-    # g = sns.FacetGrid(data=data_df, col="Base", row="KNNDSD", margin_titles=True, sharex=False, sharey=False, height=3, aspect=1.5)
-    # g.map_dataframe(sns.histplot, x="pvalue", hue="sampler")
-    # plt.savefig("test_plots/semantic_kde.png")
-    # plt.show()
-
-    df = get_semantic_metrics_for_all_experiments()
-    df = df[df["Sample Size"]==10]
-    df["Type"] = df["OOD Detector"].apply(lambda x: "5NN" in x)
-    df["Base"] = df["OOD Detector"].apply(lambda x: x.split("_5NN")[0] if "5NN" in x else x)
-    # g = sns.FacetGrid(data=df, col="Dataset", row="fold")
-    # g.map_dataframe(sns.boxplot, hue="KNNDSD", y="DR", x="Base")
-    # plt.savefig("test_plots/semantic.png")
-    # plt.show()
-    df = df.groupby(["Dataset", "Base", "Type"])[["FPR", "FNR", "DR", "AUROC", "AUPR"]].mean()
-    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-        print(df)
 
 
-    # df = df.groupby(["Dataset", "OOD Detector"])[["FPR", "FNR", "DR"]].mean()
-    # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-    #     print(df)
-    # input()
     #sampler_breakdown
     # breakdown_by_sampler()
     # input()
     #
     # sample_size_breakdown
-    # test_simple_regressor()
     # breakdown_by_sample_size()
 
     # thresholding_plots
-    # threshold_plots("CIFAR10", 100)
-    #severity
-    # plot_severities()
-    # plot_severity("imagenette", 100)
-    # plot_severity("CIFAR100", 100)
+    plot_regplots()
 
-    """
-    Correlation plots
-    """
-    # correlation_summary()
-    # plot_regplots()
